@@ -240,7 +240,7 @@ class Schema extends Data
             throw new RuntimeException("Type {$type_name} is not a Data class");
         }
 
-        $scheme_name = last(explode('\\', $type_name));
+        $scheme_name = str_replace('\\', '.', $type_name);
 
         if (! $scheme_name || ! is_string($scheme_name)) {
             throw new RuntimeException("Cannot read basename from {$type_name}");
