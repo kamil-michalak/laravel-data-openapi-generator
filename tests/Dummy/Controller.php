@@ -56,6 +56,14 @@ class Controller extends LaravelController
         return ReturnData::collect([], DataCollection::class);
     }
 
+    /**
+     * @return \Xolvio\OpenApiGenerator\Test\ReturnData
+     */
+    public function unionData(): ReturnData|array
+    {
+        return new ReturnData();
+    }
+
     public function intParameter(int $parameter): ReturnData
     {
         return ReturnData::create($parameter);

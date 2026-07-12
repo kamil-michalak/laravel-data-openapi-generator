@@ -292,17 +292,24 @@ class Schema extends Data
 
         $tag_type = $tag->getType();
 
-        if (! $tag_type instanceof AbstractList) {
-            throw new RuntimeException('Return tag of method ' . $reflection->getName() . ' is not a list');
+        if ($tag_type instanceof AbstractList) {
+            $class = $tag_type->getValueType()->__toString();
+
+            return new self(
+                type: 'array',
+                items: self::fromDataReflection($class),
+                nullable: $nullable,
+            );
         }
 
-        $class = $tag_type->getValueType()->__toString();
+        // The docblock names a single, non-list type, e.g.
+        // `@return App\...\LiveWrapperData` used together with a
+        // `LiveWrapperData|array` union return type. In that case the `array`
+        // part is just the serialized form of the same object, so resolve the
+        // docblock type directly instead of assuming a list.
+        $class = ltrim((string) $tag_type, '\\');
 
-        return new self(
-            type: 'array',
-            items: self::fromDataReflection($class),
-            nullable: $nullable,
-        );
+        return self::fromDataReflection($class, nullable: $nullable);
     }
 
     protected static function fromArray(string $type, bool $nullable): self

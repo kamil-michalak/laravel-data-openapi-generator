@@ -30,6 +30,29 @@ it('can create data response', function () {
     );
 });
 
+it('can create data response from a Data|array union type via docblock', function () {
+    $route  = new Route('get', '/', [Controller::class, 'unionData']);
+    $method = methodFromRoute($route);
+
+    expect(Response::fromRoute($method)->toArray())
+        ->toBe([
+            200 => [
+                'description' => 'unionData',
+                'content'     => [
+                    'application/json' => [
+                        'schema' => [
+                            '$ref' => '#/components/schemas/ReturnData',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+    expect(OpenApi::getTempSchemas())->toMatchArray(
+        ['ReturnData' => 'Xolvio\\OpenApiGenerator\\Test\\ReturnData']
+    );
+});
+
 it('can create collection response', function () {
     foreach (['array', 'collection'] as $function) {
         $route  = new Route('get', '/', [Controller::class, $function]);
