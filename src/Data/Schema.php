@@ -17,6 +17,8 @@ use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionProperty;
+use ReflectionType;
+use ReflectionUnionType;
 use RuntimeException;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Data as LaravelData;
@@ -45,6 +47,8 @@ class Schema extends Data
         /** @var Collection<int,Property> */
         protected ?Collection $properties = null,
         public ?array $enum = null,
+        /** @var Schema[]|null */
+        protected ?array $oneOf = null,
     ) {
         $this->type     = self::CASTS[$this->type] ?? $this->type;
         $this->nullable = $this->nullable ? $this->nullable : null;
@@ -71,6 +75,30 @@ class Schema extends Data
 
     public static function fromReflectionProperty(ReflectionProperty $reflection): self
     {
+        $reflection_type = $reflection->getType();
+
+        if ($reflection_type instanceof ReflectionUnionType) {
+            $named_types = array_values(array_filter(
+                $reflection_type->getTypes(),
+                fn (ReflectionType $type) => $type instanceof ReflectionNamedType && 'null' !== $type->getName(),
+            ));
+
+            // Spatie's DataPropertyFactory only ever tracks the first Data
+            // class of a union-typed property (it keeps a single `dataClass`
+            // per property), silently dropping the rest. For a union of
+            // multiple named types we bypass it entirely and build a
+            // `oneOf` schema straight from reflection instead.
+            if (count($named_types) > 1) {
+                return new self(
+                    oneOf: array_map(
+                        fn (ReflectionNamedType $type) => self::fromDataReflection($type),
+                        $named_types,
+                    ),
+                    nullable: $reflection_type->allowsNull() ?: null,
+                );
+            }
+        }
+
         $property = app(DataPropertyFactory::class)->build(
             $reflection,
             $reflection->getDeclaringClass(),
@@ -187,6 +215,13 @@ class Schema extends Data
                 $array['allOf'][] = ['$ref' => $array['$ref']];
                 unset($array['$ref']);
             }
+        }
+
+        if (null !== $this->oneOf) {
+            $array['oneOf'] = collect($this->oneOf)
+                ->map(fn (Schema $schema) => $schema->transform($transformationContext))
+                ->values()
+                ->toArray();
         }
 
         if (null !== $this->properties) {

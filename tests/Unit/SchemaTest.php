@@ -9,6 +9,7 @@ use Xolvio\OpenApiGenerator\Test\IntEnum;
 use Xolvio\OpenApiGenerator\Test\RequestData;
 use Xolvio\OpenApiGenerator\Test\ReturnData;
 use Xolvio\OpenApiGenerator\Test\StringEnum;
+use Xolvio\OpenApiGenerator\Test\UnionPropertyData;
 
 it('can create built-in schema', function () {
     foreach (['int' => 'integer', 'string' => 'string', 'float' => 'number', 'bool' => 'boolean'] as $type => $expected) {
@@ -66,4 +67,24 @@ it('can create data schema', function () {
     $schema = Schema::fromDataClass(RequestData::class);
     expect($schema)->toHaveProperty('type', 'object');
     expect($schema->toArray()['properties'])->toHaveLength(13);
+});
+
+it('can create oneOf schema for a union-typed property', function () {
+    $schema = Schema::fromDataClass(UnionPropertyData::class);
+
+    $return_data_schema      = str_replace('\\', '.', ReturnData::class);
+    $content_type_data_schema = str_replace('\\', '.', ContentTypeData::class);
+
+    expect($schema->toArray()['properties']['action'])
+        ->toBe([
+            'oneOf' => [
+                ['$ref' => '#/components/schemas/' . $return_data_schema],
+                ['$ref' => '#/components/schemas/' . $content_type_data_schema],
+            ],
+        ]);
+
+    expect(OpenApi::getTempSchemas())->toMatchArray([
+        $return_data_schema      => ReturnData::class,
+        $content_type_data_schema => ContentTypeData::class,
+    ]);
 });
