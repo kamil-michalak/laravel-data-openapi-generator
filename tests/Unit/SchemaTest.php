@@ -9,6 +9,7 @@ use Xolvio\OpenApiGenerator\Test\IntEnum;
 use Xolvio\OpenApiGenerator\Test\RequestData;
 use Xolvio\OpenApiGenerator\Test\ReturnData;
 use Xolvio\OpenApiGenerator\Test\StringEnum;
+use Xolvio\OpenApiGenerator\Test\OptionalPropertyData;
 use Xolvio\OpenApiGenerator\Test\UnionPropertyData;
 
 it('can create built-in schema', function () {
@@ -87,4 +88,26 @@ it('can create oneOf schema for a union-typed property', function () {
         $return_data_schema      => ReturnData::class,
         $content_type_data_schema => ContentTypeData::class,
     ]);
+});
+
+it('drops Optional from union property types', function () {
+    $schema = Schema::fromDataClass(OptionalPropertyData::class)->toArray();
+
+    $return_data_schema       = str_replace('\\', '.', ReturnData::class);
+    $content_type_data_schema = str_replace('\\', '.', ContentTypeData::class);
+
+    expect($schema['properties']['flag'])
+        ->toBe([
+            'type' => 'boolean',
+        ]);
+
+    expect($schema['properties']['action'])
+        ->toBe([
+            'oneOf' => [
+                ['$ref' => '#/components/schemas/' . $return_data_schema],
+                ['$ref' => '#/components/schemas/' . $content_type_data_schema],
+            ],
+        ]);
+
+    expect($schema['required'])->toBe(['name']);
 });

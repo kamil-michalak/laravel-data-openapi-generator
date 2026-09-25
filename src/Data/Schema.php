@@ -23,6 +23,7 @@ use RuntimeException;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Data as LaravelData;
 use Spatie\LaravelData\DataCollection;
+use Spatie\LaravelData\Optional;
 use Spatie\LaravelData\Support\Factories\DataPropertyFactory;
 use Spatie\LaravelData\Support\Transformation\TransformationContext;
 use Spatie\LaravelData\Support\Transformation\TransformationContextFactory;
@@ -78,9 +79,13 @@ class Schema extends Data
         $reflection_type = $reflection->getType();
 
         if ($reflection_type instanceof ReflectionUnionType) {
+            // `Optional` only marks the property as omittable (see Property::fromProperty()),
+            // it is not a schema of its own - `bool|Optional` must end up as plain `boolean`.
             $named_types = array_values(array_filter(
                 $reflection_type->getTypes(),
-                fn (ReflectionType $type) => $type instanceof ReflectionNamedType && 'null' !== $type->getName(),
+                fn (ReflectionType $type) => $type instanceof ReflectionNamedType
+                    && 'null' !== $type->getName()
+                    && ! is_a($type->getName(), Optional::class, true),
             ));
 
             // Spatie's DataPropertyFactory only ever tracks the first Data
